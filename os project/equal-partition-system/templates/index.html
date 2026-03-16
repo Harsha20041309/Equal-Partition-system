@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equal Partition System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Equal Partition System</h1>
+            <p>Enter a list of numbers separated by spaces to check if they can be divided into two subsets with equal sum.</p>
+            
+            <div class="input-group">
+                <input type="text" id="numbersInput" placeholder="Example: 1 5 11 5" autocomplete="off">
+                <button id="checkButton">Check Partition</button>
+            </div>
+
+            <div id="result" class="result-box hidden">
+                <span id="resultMessage"></span>
+            </div>
+            
+            <div class="algorithm-info">
+                <h3>How it works:</h3>
+                <p>The system uses <strong>Dynamic Programming</strong> to solve the Subset Sum Problem, checking if a subset exists that sums to exactly half of the total sum.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('checkButton').addEventListener('click', async () => {
+            const input = document.getElementById('numbersInput').value;
+            const resultBox = document.getElementById('result');
+            const resultMessage = document.getElementById('resultMessage');
+
+            if (!input.trim()) {
+                showMessage("Please enter some numbers.", false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ numbers: input }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(data.message, data.possible);
+                } else {
+                    showMessage(data.message, false, true);
+                }
+            } catch (error) {
+                showMessage("An error occurred. Please try again.", false, true);
+            }
+        });
+
+        function showMessage(message, isPossible, isError = false) {
+            const resultBox = document.getElementById('result');
+            const resultMessage = document.getElementById('resultMessage');
+
+            resultBox.classList.remove('hidden', 'success', 'failure', 'error');
+            
+            if (isError) {
+                resultBox.classList.add('error');
+            } else if (isPossible) {
+                resultBox.classList.add('success');
+            } else {
+                resultBox.classList.add('failure');
+            }
+
+            resultMessage.innerText = message;
+        }
+    </script>
+</body>
+</html>
