@@ -85,16 +85,33 @@ button:active {
     border-radius: 10px;
     margin-top: 1.5rem;
     font-weight: 500;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .result-message-title {
     font-size: 1.4rem;
     font-weight: 700;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.solutions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.solution-wrapper {
+    padding-top: 1rem;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.solution-wrapper:first-child {
+    border-top: none;
+    padding-top: 0;
 }
 
 .subset-container {
-    margin-top: 1.2rem;
     display: flex;
     flex-direction: column;
     gap: 12px;

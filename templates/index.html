@@ -31,8 +31,7 @@
     <script>
         document.getElementById('checkButton').addEventListener('click', async () => {
             const input = document.getElementById('numbersInput').value;
-            const resultBox = document.getElementById('result');
-            const resultMessage = document.getElementById('resultMessage');
+            console.log("DEBUG: User Input:", input);
 
             if (!input.trim()) {
                 showMessage({ message: "Please enter some numbers." }, false);
@@ -40,7 +39,8 @@
             }
 
             try {
-                const response = await fetch('/check', {
+                // Send request to /partition route
+                const response = await fetch('/partition', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -48,15 +48,26 @@
                     body: JSON.stringify({ numbers: input }),
                 });
 
+                console.log("DEBUG: Response Status:", response.status);
+
+                // Check if response is JSON
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new TypeError("Server did not return JSON. Please check backend logs.");
+                }
+
                 const data = await response.json();
+                console.log("DEBUG: Parsed JSON Data:", data);
 
                 if (data.success) {
                     showMessage(data, data.possible);
                 } else {
+                    // Show error message from backend
                     showMessage(data, false, true);
                 }
             } catch (error) {
-                showMessage({ message: "An error occurred. Please try again." }, false, true);
+                console.error("DEBUG: Fetch Error:", error);
+                showMessage({ message: error.message || "An error occurred. Please try again." }, false, true);
             }
         });
 
@@ -79,21 +90,48 @@
                 title.className = 'result-message-title';
                 title.innerText = data.message;
                 resultMessage.appendChild(title);
+
+                if (data.solutions && data.solutions.length >= 10) {
+                    const limitInfo = document.createElement('p');
+                    limitInfo.style.fontSize = '0.85rem';
+                    limitInfo.style.marginBottom = '1rem';
+                    limitInfo.style.fontStyle = 'italic';
+                    limitInfo.innerText = "(Showing first 10 solutions)";
+                    resultMessage.appendChild(limitInfo);
+                }
                 
-                const container = document.createElement('div');
-                container.className = 'subset-container';
+                const solutionsContainer = document.createElement('div');
+                solutionsContainer.className = 'solutions-list';
                 
-                const createSubsetDiv = (label, items) => {
-                    const div = document.createElement('div');
-                    div.className = 'subset-box';
-                    div.innerHTML = `<span class="subset-label">${label}:</span> [${items.join(', ')}]`;
-                    return div;
-                };
+                data.solutions.forEach((sol, index) => {
+                    const solutionWrapper = document.createElement('div');
+                    solutionWrapper.className = 'solution-wrapper';
+                    
+                    const solHeader = document.createElement('h4');
+                    solHeader.innerText = `Solution ${index + 1}:`;
+                    solHeader.style.marginBottom = '8px';
+                    solHeader.style.textAlign = 'left';
+                    solHeader.style.fontSize = '1rem';
+                    solutionWrapper.appendChild(solHeader);
+
+                    const container = document.createElement('div');
+                    container.className = 'subset-container';
+                    
+                    const createSubsetDiv = (label, items) => {
+                        const div = document.createElement('div');
+                        div.className = 'subset-box';
+                        div.innerHTML = `<span class="subset-label">${label}:</span> [${items.join(', ')}]`;
+                        return div;
+                    };
+                    
+                    container.appendChild(createSubsetDiv('Subset 1', sol.subset1));
+                    container.appendChild(createSubsetDiv('Subset 2', sol.subset2));
+                    
+                    solutionWrapper.appendChild(container);
+                    solutionsContainer.appendChild(solutionWrapper);
+                });
                 
-                container.appendChild(createSubsetDiv('Subset 1', data.subset1));
-                container.appendChild(createSubsetDiv('Subset 2', data.subset2));
-                
-                resultMessage.appendChild(container);
+                resultMessage.appendChild(solutionsContainer);
             } else {
                 resultBox.classList.add('failure');
                 resultMessage.innerText = data.message;

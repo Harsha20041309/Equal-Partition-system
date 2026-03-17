@@ -3,96 +3,106 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-def can_partition(nums):
+def find_all_partitions(nums):
     """
-    Determines if the array can be partitioned into two subsets with equal sum.
-    Uses Dynamic Programming and backtracking to reconstruct the subsets.
+    Finds all unique subset pairs with equal sums using backtracking.
     """
     total_sum = sum(nums)
-    
-    # If total sum is odd, it's impossible to split into two equal integer sums
     if total_sum % 2 != 0:
         return {"possible": False}
     
     target = total_sum // 2
+    nums.sort()
     n = len(nums)
-    
-    # dp[i][j] will be true if a sum of j can be achieved using first i numbers
-    dp = [[False] * (target + 1) for _ in range(n + 1)]
-    
-    # Base case: Sum 0 is always possible with an empty subset
-    for i in range(n + 1):
-        dp[i][0] = True
-        
-    # Fill the DP table
-    for i in range(1, n + 1):
-        for j in range(1, target + 1):
-            if j < nums[i-1]:
-                dp[i][j] = dp[i-1][j]
-            else:
-                dp[i][j] = dp[i-1][j] or dp[i-1][j - nums[i-1]]
+    solutions = set()
+    limit = 10
+
+    def backtrack(start, current_sum, current_subset):
+        if len(solutions) >= limit:
+            return
+            
+        if current_sum == target:
+            # Reconstruct the partition
+            s1 = list(current_subset)
+            s2 = list(nums)
+            for x in s1:
+                s2.remove(x)
+            
+            # Use tuple of sorted tuples to avoid duplicates and symmetry
+            partition = tuple(sorted([tuple(sorted(s1)), tuple(sorted(s2))]))
+            solutions.add(partition)
+            return
+
+        for i in range(start, n):
+            # Optimization: skip further elements if target is exceeded
+            if current_sum + nums[i] > target:
+                break
                 
-    if not dp[n][target]:
+            # Skip duplicate numbers at the same recursion level
+            if i > start and nums[i] == nums[i-1]:
+                continue
+            
+            current_subset.append(nums[i])
+            backtrack(i + 1, current_sum + nums[i], current_subset)
+            current_subset.pop()
+
+    backtrack(0, 0, [])
+    
+    if not solutions:
         return {"possible": False}
     
-    # Backtrack to reconstruct Subset 1
-    subset1 = []
-    subset2 = list(nums)
-    curr_sum = target
-    for i in range(n, 0, -1):
-        # If the sum curr_sum was not possible without the current number
-        if curr_sum >= nums[i-1] and dp[i-1][curr_sum - nums[i-1]]:
-            val = nums[i-1]
-            subset1.append(val)
-            curr_sum -= val
-            # Remove one instance of val from subset2
-            for k in range(len(subset2)):
-                if subset2[k] == val:
-                    subset2.pop(k)
-                    break
-                    
+    # Format solutions for JSON response
+    formatted_solutions = []
+    for s1, s2 in solutions:
+        formatted_solutions.append({
+            "subset1": list(s1),
+            "subset2": list(s2)
+        })
+        
     return {
         "possible": True,
-        "subset1": subset1,
-        "subset2": subset2
+        "solutions": formatted_solutions
     }
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/check', methods=['POST'])
-def check():
+@app.route('/partition', methods=['POST'])
+def partition():
     try:
         data = request.get_json()
+        print(f"DEBUG: Received request data: {data}")
+        
         input_str = data.get('numbers', '')
-        # Convert space-separated string to list of integers
-        nums = [int(x) for x in input_str.split() if x.strip()]
-        
-        if not nums:
+        if not input_str.strip():
             return jsonify({'success': False, 'message': 'Please enter some numbers.'})
+            
+        nums = [int(x) for x in input_str.split() if x.strip()]
+        print(f"DEBUG: Parsed numbers: {nums}")
         
-        result = can_partition(nums)
+        if len(nums) < 2:
+            return jsonify({'success': False, 'message': 'At least two numbers are required.'})
+            
+        result = find_all_partitions(nums)
+        print(f"DEBUG: Partition found: {result['possible']}, Solutions: {len(result.get('solutions', []))}")
         
         if result["possible"]:
             return jsonify({
                 'success': True, 
                 'possible': True, 
-                'message': 'Equal Partition Possible',
-                'subset1': result["subset1"],
-                'subset2': result["subset2"]
+                'message': f'Equal Partition Possible ({len(result["solutions"])} found)',
+                'solutions': result["solutions"]
             })
         else:
-            return jsonify({
-                'success': True, 
-                'possible': False, 
-                'message': 'Equal Partition Not Possible'
-            })
+            return jsonify({'success': True, 'possible': False, 'message': 'Equal Partition Not Possible'})
             
-    except ValueError:
-        return jsonify({'success': False, 'message': 'Invalid input. Please enter only numbers.'})
+    except ValueError as e:
+        print(f"DEBUG: ValueError: {str(e)}")
+        return jsonify({'success': False, 'message': 'Invalid input. Please enter only numbers separated by spaces.'})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        print(f"DEBUG: Unexpected error: {str(e)}")
+        return jsonify({'success': False, 'message': f'Server error: {str(e)}'})
 
 if __name__ == '__main__':
     # Use the environment PORT variable or default to 5000
