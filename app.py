@@ -6,27 +6,56 @@ app = Flask(__name__)
 def can_partition(nums):
     """
     Determines if the array can be partitioned into two subsets with equal sum.
-    Uses Dynamic Programming (Subset Sum Problem).
+    Uses Dynamic Programming and backtracking to reconstruct the subsets.
     """
     total_sum = sum(nums)
     
     # If total sum is odd, it's impossible to split into two equal integer sums
     if total_sum % 2 != 0:
-        return False
+        return {"possible": False}
     
     target = total_sum // 2
+    n = len(nums)
     
-    # dp[i] will be true if sum 'i' is possible
-    dp = [False] * (target + 1)
-    dp[0] = True
+    # dp[i][j] will be true if a sum of j can be achieved using first i numbers
+    dp = [[False] * (target + 1) for _ in range(n + 1)]
     
-    for num in nums:
-        # Iterate backwards to ensure each element is used only once
-        for i in range(target, num - 1, -1):
-            if dp[i - num]:
-                dp[i] = True
+    # Base case: Sum 0 is always possible with an empty subset
+    for i in range(n + 1):
+        dp[i][0] = True
+        
+    # Fill the DP table
+    for i in range(1, n + 1):
+        for j in range(1, target + 1):
+            if j < nums[i-1]:
+                dp[i][j] = dp[i-1][j]
+            else:
+                dp[i][j] = dp[i-1][j] or dp[i-1][j - nums[i-1]]
+                
+    if not dp[n][target]:
+        return {"possible": False}
     
-    return dp[target]
+    # Backtrack to reconstruct Subset 1
+    subset1 = []
+    subset2 = list(nums)
+    curr_sum = target
+    for i in range(n, 0, -1):
+        # If the sum curr_sum was not possible without the current number
+        if curr_sum >= nums[i-1] and dp[i-1][curr_sum - nums[i-1]]:
+            val = nums[i-1]
+            subset1.append(val)
+            curr_sum -= val
+            # Remove one instance of val from subset2
+            for k in range(len(subset2)):
+                if subset2[k] == val:
+                    subset2.pop(k)
+                    break
+                    
+    return {
+        "possible": True,
+        "subset1": subset1,
+        "subset2": subset2
+    }
 
 @app.route('/')
 def index():
@@ -45,11 +74,13 @@ def check():
         
         result = can_partition(nums)
         
-        if result:
+        if result["possible"]:
             return jsonify({
                 'success': True, 
                 'possible': True, 
-                'message': 'Equal Partition Possible'
+                'message': 'Equal Partition Possible',
+                'subset1': result["subset1"],
+                'subset2': result["subset2"]
             })
         else:
             return jsonify({

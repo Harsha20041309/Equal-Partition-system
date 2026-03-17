@@ -35,7 +35,7 @@
             const resultMessage = document.getElementById('resultMessage');
 
             if (!input.trim()) {
-                showMessage("Please enter some numbers.", false);
+                showMessage({ message: "Please enter some numbers." }, false);
                 return;
             }
 
@@ -51,30 +51,53 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage(data.message, data.possible);
+                    showMessage(data, data.possible);
                 } else {
-                    showMessage(data.message, false, true);
+                    showMessage(data, false, true);
                 }
             } catch (error) {
-                showMessage("An error occurred. Please try again.", false, true);
+                showMessage({ message: "An error occurred. Please try again." }, false, true);
             }
         });
 
-        function showMessage(message, isPossible, isError = false) {
+        function showMessage(data, isPossible, isError = false) {
             const resultBox = document.getElementById('result');
             const resultMessage = document.getElementById('resultMessage');
 
+            // Clear previous results
+            resultMessage.innerHTML = '';
+            
             resultBox.classList.remove('hidden', 'success', 'failure', 'error');
             
             if (isError) {
                 resultBox.classList.add('error');
+                resultMessage.innerText = data.message;
             } else if (isPossible) {
                 resultBox.classList.add('success');
+                
+                const title = document.createElement('div');
+                title.className = 'result-message-title';
+                title.innerText = data.message;
+                resultMessage.appendChild(title);
+                
+                const container = document.createElement('div');
+                container.className = 'subset-container';
+                
+                const createSubsetDiv = (label, items) => {
+                    const div = document.createElement('div');
+                    div.className = 'subset-box';
+                    div.innerHTML = `<span class="subset-label">${label}:</span> [${items.join(', ')}]`;
+                    return div;
+                };
+                
+                container.appendChild(createSubsetDiv('Subset 1', data.subset1));
+                container.appendChild(createSubsetDiv('Subset 2', data.subset2));
+                
+                resultMessage.appendChild(container);
             } else {
                 resultBox.classList.add('failure');
+                resultMessage.innerText = data.message;
             }
-
-            resultMessage.innerText = message;
         }
     </script>
 </body>
